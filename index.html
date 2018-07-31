@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Webcam Testing</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body{
+            background-color: yellow;
+        }
+        .container{
+            position: absolute;
+            width: 97%;
+            height: 90%;
+            background-color: white;
+        }
+        .player{
+            position: absolute;
+            width: 135px;
+            height: 100px;
+            top: 0;
+            right: 0;
+        }
+        .photo{
+            width: 100%;
+            top: 20%;
+            position: absolute;
+        }
+        .strip{
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            display: flex;
+            flex-wrap: wrap;
+        }
+        .strip a{
+            width: 100px;
+            height: 80px;
+            background-color: grey;
+            border: 1px solid;
+            margin: 5px;
+            padding: 10px;
+            box-shadow: 5px 5px #88888875;
+        }
+        .strip a img{
+            width: 100%;
+            height: 90%;
+        }
+    </style>
+</head>
+<body>
+    
+    <div class="container">
+        <div>
+            <button onclick="takePhoto()">take photo</button>
+
+            <select id="selectedEffect">
+                    <option>Select an Effect -Normal-</option>
+                    <option value="redEffect">Red Effect</option>
+                    <option value="greenEffect">Green Effect</option>
+                    <option value="rgbSplit">RGB Split</option>
+            </select>
+            <input type="checkbox" id="alphaEffect">alpha 0.1<br>
+            <input type="checkbox" id="greenScreen">Green Screen<br>
+
+            <div class="rgb">
+                <label for="rmin">Red min:</label>
+                <input type="range" min=0 max=255 name="rmin">
+                <label for="rmin">Red max:</label>
+                <input type="range" min=0 max=255 name="rmax">
+
+                <br>
+
+                <label for="rmin">Green min:</label>
+                <input type="range" min=0 max=255 name="gmin">
+                <label for="rmin">Green max:</label>
+                <input type="range" min=0 max=255 name="gmax">
+
+                <br>
+
+                <label for="rmin">Blue min:</label>
+                <input type="range" min=0 max=255 name="bmin">
+                <label for="rmin">Blue max:</label>
+                <input type="range" min=0 max=255 name="bmax">
+            </div>
+        </div>
+
+        <canvas class="photo"></canvas>
+        <video class="player"></video>
+        <div class="strip"></div>
+    </div>
+
+    <audio class="snap" src="https://www.freesfx.co.uk/rx2/mp3s/5/16983_1461335348.mp3" hidden></audio>
+
+    <script>
+    const video = document.querySelector('.player');
+    const canvas = document.querySelector('.photo');
+    const ctx = canvas.getContext('2d');
+    const strip = document.querySelector('.strip');
+    const snap = document.querySelector('.snap');
+
+    function getVideo() {
+        navigator.mediaDevices.getUserMedia({ video:true, audio: false })
+            .then(localMediaStream => {
+                console.log(localMediaStream);
+                video.srcObject = localMediaStream;
+                video.play();
+            })
+            .catch(err => {
+                console.log('user dont have media allowed.');
+            })
+    }
+
+    function paintToCanvas() {
+        const width = video.videoWidth;
+        const height = video.videoHeight;
+        console.log(width, height);
+
+        canvas.width = width;
+        canvas.height = height;
+
+        return setInterval(() => {
+            ctx.drawImage(video, 0, 0, width, height);
+
+            // Get array of pixels in canvas
+            let pixels = ctx.getImageData(0, 0, width, height);
+
+            //Get Effect in select dom
+            var e = document.getElementById("selectedEffect");
+            var selectedEffect = e.options[e.selectedIndex].value;
+
+            //Get alpha effect checked dom
+            var alphaEffect = document.getElementById("alphaEffect").checked;
+
+            if(alphaEffect){
+                ctx.globalAlpha = 0.1; // 10% transparency per interval
+            } else {
+                ctx.globalAlpha = 1;
+            }
+
+            //Get greenScreen effect checked dom DOESNT WORK
+            var greenScreenEffect = document.getElementById("greenScreen").checked;
+
+            if(greenScreenEffect){
+                pixels = greenScreen(pixels);
+            } else {
+                pixels = pixels;
+            }
+
+            // pass to pixels red effect
+            switch(selectedEffect) {
+                case "redEffect":
+                    pixels = redEffect(pixels);
+                break;
+                case "greenEffect":
+                    pixels = greenEffect(pixels);
+                break;
+                case "rgbSplit":
+                    pixels = rgbSplit(pixels);
+                break;
+                default:
+                    pixels = pixels;
+            }
+            //Returned pixels and put image again
+            ctx.putImageData(pixels, 0, 0);
+
+            
+            
+        }, 16);
+    }
+
+    function takePhoto() {
+        // Played picture sound
+        snap.currentTime = 0;
+        snap.play();
+        // Take the data out of the canvas
+        const data = canvas.toDataURL('image/jpeg'); // Photo in base 64
+        
+        // Create a link of the photo and put it in strip images
+        const link = document.createElement('a');
+        link.href = data;
+        link.setAttribute('download', 'handsome');
+        link.innerHTML = `<img src="${data}" alt="Handsome man" />`
+        //link.textContent = 'Download Image';
+        strip.insertBefore(link, strip.firstChild);
+    }
+
+    function redEffect(pixels) {
+        for (let i = 0; i < pixels.data.length; i+=4) {
+            red = pixels.data[i + 0]; // RED CHANNEL
+            green = pixels.data[i + 1]; // GREEN CHANNEL
+            blue = pixels.data[i + 2];  // BLUE CHANNEL
+            alpha = pixels.data[i + 3];  // ALPHA CHANNEL
+            
+            pixels.data[i + 0] = red + 100; // RED
+            pixels.data[i + 1] = green - 50; // GREEN
+            pixels.data[i + 2] = green * 0.5; // BLUE
+        }
+        return pixels;
+    }
+
+    function greenEffect(pixels) {
+        for (let i = 0; i < pixels.data.length; i+=4) {
+            red = pixels.data[i + 0]; // RED CHANNEL
+            green = pixels.data[i + 1]; // GREEN CHANNEL
+            blue = pixels.data[i + 2];  // BLUE CHANNEL
+            alpha = pixels.data[i + 3];  // ALPHA CHANNEL
+
+            pixels.data[i + 0] = red - 100; // RED
+            pixels.data[i + 1] = green - 50; // GREEN
+            pixels.data[i + 2] = green * 0.5; // BLUE
+        }
+        return pixels;
+    }
+
+    function rgbSplit(pixels) {
+        for (let i = 0; i < pixels.data.length; i+=4) {
+            red = pixels.data[i + 0]; // RED CHANNEL
+            green = pixels.data[i + 1]; // GREEN CHANNEL
+            blue = pixels.data[i + 2];  // BLUE CHANNEL
+            alpha = pixels.data[i + 3];  // ALPHA CHANNEL
+
+            pixels.data[i - 150] = red; // RED
+            pixels.data[i + 100] = green; // GREEN
+            pixels.data[i -150] = blue; // BLUE
+        }
+        return pixels;
+    }
+
+    function greenScreen(pixels) {
+        const levels = {};
+        
+        // Get values of RGB Selector and push into array levels
+        document.querySelectorAll('.rgb input').forEach((input) => {
+            levels[input.name] = input.value
+        });
+        console.log(levels);
+        
+
+        for (let i = 0; i < pixels.data.length; i+=4) {
+            red = pixels.data[i + 0]; // RED CHANNEL
+            green = pixels.data[i + 1]; // GREEN CHANNEL
+            blue = pixels.data[i + 2];  // BLUE CHANNEL
+            alpha = pixels.data[i + 3];  // ALPHA CHANNEL
+            
+
+            if(red >= levels.rmin && green >= levels.gmin && blue >= levels.bmin && red <= levels.rmax && green <= levels.gmax && blue <= levels.bmax) {
+                pixels.data[i + 3] = 0;
+            }
+        }
+        return pixels;
+    }
+
+    getVideo();
+
+    video.addEventListener('canplay', paintToCanvas);
+    </script>
+</body>
+</html>
