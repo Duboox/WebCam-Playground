@@ -63,6 +63,7 @@
             </select>
             <input type="checkbox" id="alphaEffect">alpha 0.1<br>
             <input type="checkbox" id="greenScreen">Green Screen<br>
+            <input type="checkbox" id="faceDetect">Face Detection<br>
 
             <div class="rgb">
                 <label for="rmin">Red min:</label>
@@ -92,6 +93,9 @@
     </div>
 
     <audio class="snap" src="https://www.freesfx.co.uk/rx2/mp3s/5/16983_1461335348.mp3" hidden></audio>
+
+    <script src="ccv.js"></script>
+    <script src="face.js"></script>
 
     <script>
     const video = document.querySelector('.player');
@@ -123,7 +127,26 @@
         return setInterval(() => {
             ctx.drawImage(video, 0, 0, width, height);
 
-            // Get array of pixels in canvas
+            // ctx.fillRect(20, 20, 150, 100);  // Testing fill rect in canvas
+
+            //Get face detection checked dom
+            var faceDetect = document.getElementById("faceDetect").checked;
+
+            if (faceDetect) {
+                var imageEffect = new Image();
+                imageEffect.src = "glasses2.png";
+
+                var comp = ccv.detect_objects({canvas : (ccv.pre(canvas)), cascade: cascade, interval: 1, min_neighbors: 1});
+                console.log(comp);
+
+                // Draw effect on everyone
+                for (i = 0; i < comp.length; i++) {
+                    console.log('detected and drwaing');
+                    ctx.drawImage(imageEffect, comp[i].x, comp[i].y, comp[i].width, comp[i].height);
+                }
+            }
+
+            // Get array of pixels in canvas for full image effects
             let pixels = ctx.getImageData(0, 0, width, height);
 
             //Get Effect in select dom
@@ -158,6 +181,25 @@
                 break;
                 case "rgbSplit":
                     pixels = rgbSplit(pixels);
+                break;
+                case "faceDetect":
+                    var glasses = new Image();
+                    glasses.src = "glasses2.png";
+
+                    var comp = ccv.detect_objects({canvas : (ccv.pre(canvas)), cascade: cascade, interval: 1, min_neighbors: 1});
+                    console.log(comp);
+
+                    ctx.fillRect(comp.x, comp.y, comp.width, comp.height);
+
+                    // Draw glasses on everyone!
+                    for (i = 0; i < comp.length; i++) {
+                        console.log('detected and drwaing');
+
+                        ctx.fillRect(comp.x, comp.y, comp.width, comp.height);
+
+                        
+                        ctx.drawImage(glasses, comp[i].x, comp[i].y, comp[i].width, comp[i].height);
+                    }
                 break;
                 default:
                     pixels = pixels;
